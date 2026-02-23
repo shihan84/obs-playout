@@ -1,12 +1,30 @@
+/*
+OBS Time Scheduler Plugin
+Copyright (C) 2024 OBS Time Scheduler Team
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>
+*/
+
 #include <obs-module.h>
 #include <obs-frontend-api.h>
-#include <plugin-support.h>
 #include "utils/logger.h"
 #include "utils/config.h"
 #include "scheduler-core.h"
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("obs-time-scheduler", "en-US")
+
 MODULE_EXPORT const char *obs_module_description(void)
 {
 	return "Time-based playlist scheduler for OBS Studio";
@@ -15,6 +33,16 @@ MODULE_EXPORT const char *obs_module_description(void)
 MODULE_EXPORT const char *obs_module_name(void)
 {
 	return "Time Scheduler";
+}
+
+MODULE_EXPORT const char *obs_module_author(void)
+{
+	return "OBS Time Scheduler Team";
+}
+
+MODULE_EXPORT const char *obs_module_version(void)
+{
+	return "1.0.0";
 }
 
 static obs_hotkey_id toggle_scheduler_hotkey = OBS_INVALID_HOTKEY_ID;
@@ -59,7 +87,7 @@ static void obs_frontend_event_callback(enum obs_frontend_event event, void *pri
 
 bool obs_module_load(void)
 {
-	blog(LOG_INFO, "[Time Scheduler] Loading plugin v%s", PLUGIN_VERSION);
+	blog(LOG_INFO, "[Time Scheduler] Loading plugin v%s", obs_module_version());
 
 	// Initialize logger
 	Logger::initialize();

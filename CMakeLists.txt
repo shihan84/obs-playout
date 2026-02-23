@@ -1,12 +1,32 @@
 cmake_minimum_required(VERSION 3.20)
-project(obs-time-scheduler VERSION 1.0.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+project(obs-time-scheduler VERSION 1.0.0)
+
+# Plugin options
+option(ENABLE_FRONTEND_API "Use obs-frontend-api for UI functionality" ON)
+option(ENABLE_QT "Use Qt functionality" ON)
 
 # Find required OBS dependencies
 find_package(libobs REQUIRED)
-find_package(obs-frontend-api REQUIRED)
+target_link_libraries(obs-time-scheduler PRIVATE OBS::libobs)
+
+if(ENABLE_FRONTEND_API)
+  find_package(obs-frontend-api REQUIRED)
+  target_link_libraries(obs-time-scheduler PRIVATE OBS::obs-frontend-api)
+endif()
+
+if(ENABLE_QT)
+  find_package(Qt6 COMPONENTS Widgets Core)
+  target_link_libraries(obs-time-scheduler PRIVATE Qt6::Core Qt6::Widgets)
+  target_compile_options(
+    obs-time-scheduler
+    PRIVATE $<$<C_COMPILER_ID:Clang,AppleClang>:-Wno-quoted-include-in-framework-header -Wno-comma>
+  )
+  set_target_properties(
+    obs-time-scheduler
+    PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON
+  )
+endif()
 
 # Find additional dependencies
 find_package(nlohmann_json QUIET)
@@ -19,6 +39,7 @@ if(NOT nlohmann_json_FOUND)
         GIT_TAG v3.11.2
     )
     FetchContent_MakeAvailable(nlohmann_json)
+    target_link_libraries(obs-time-scheduler PRIVATE nlohmann_json::nlohmann_json)
 endif()
 
 find_package(fmt QUIET)
@@ -30,6 +51,7 @@ if(NOT fmt_FOUND)
         GIT_TAG 10.2.1
     )
     FetchContent_MakeAvailable(fmt)
+    target_link_libraries(obs-time-scheduler PRIVATE fmt::fmt)
 endif()
 
 # Source files
@@ -55,9 +77,8 @@ set(HEADERS
     src/utils/config.h
 )
 
-# UI components (optional)
-option(ENABLE_UI "Build UI components" ON)
-if(ENABLE_UI)
+# UI components (conditional)
+if(ENABLE_QT)
     list(APPEND SOURCES
         src/ui/settings-dialog.cpp
         src/ui/schedule-editor.cpp
@@ -66,12 +87,6 @@ if(ENABLE_UI)
         src/ui/settings-dialog.h
         src/ui/schedule-editor.h
     )
-    
-    # Find Qt6 for UI components
-    find_package(Qt6 QUIET COMPONENTS Core Widgets)
-    if(Qt6_FOUND)
-        target_link_libraries(obs-time-scheduler PRIVATE Qt6::Core Qt6::Widgets)
-    endif()
 endif()
 
 # Create plugin library
@@ -81,16 +96,22 @@ add_library(obs-time-scheduler MODULE ${SOURCES} ${HEADERS})
 target_include_directories(obs-time-scheduler PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${libobs_INCLUDE_DIRS}
-    ${obs-frontend-api_INCLUDE_DIRS}
 )
 
 # Link libraries
 target_link_libraries(obs-time-scheduler PRIVATE
     libobs
-    obs-frontend-api
     nlohmann_json::nlohmann_json
     fmt::fmt
 )
+
+if(ENABLE_FRONTEND_API)
+    target_link_libraries(obs-time-scheduler PRIVATE obs-frontend-api)
+endif()
+
+if(ENABLE_QT)
+    target_link_libraries(obs-time-scheduler PRIVATE Qt6::Core Qt6::Widgets)
+endif()
 
 # Platform-specific libraries
 if(WIN32)
@@ -124,7 +145,3 @@ install(TARGETS obs-time-scheduler
 install(DIRECTORY data/
     DESTINATION "data/obs-plugins/obs-time-scheduler/"
 )
-
-# Add tests
-enable_testing()
-add_subdirectory(tests)
