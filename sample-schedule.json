@@ -1,0 +1,91 @@
+{
+  "version": "1.0",
+  "timezone": "America/New_York",
+  "default_idle": "idle_video.mp4",
+  "playlists": [
+    {
+      "name": "Weekday Morning Show",
+      "enabled": true,
+      "days": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+      "items": [
+        {
+          "name": "Morning Intro",
+          "time": "09:00",
+          "source": "Morning_Show",
+          "file": "C:\\videos\\morning_intro.mp4",
+          "duration": 30,
+          "loop": false,
+          "scene": "Main_Scene"
+        },
+        {
+          "name": "News Segment",
+          "time": "09:05",
+          "source": "News_Source",
+          "file": "C:\\videos\\news_segment.mp4",
+          "duration": 300,
+          "loop": false,
+          "scene": "News_Scene"
+        },
+        {
+          "name": "Weather Update",
+          "time": "09:10",
+          "source": "Weather_Source",
+          "file": "C:\\videos\\weather.mp4",
+          "duration": 120,
+          "loop": false,
+          "scene": "Weather_Scene"
+        }
+      ]
+    },
+    {
+      "name": "Weekday Afternoon Programming",
+      "enabled": true,
+      "days": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+      "items": [
+        {
+          "name": "Lunch Break Intermission",
+          "time": "12:00",
+          "source": "Lunch_Break",
+          "file": "C:\\videos\\intermission.mp4",
+          "duration": 1800,
+          "loop": true,
+          "scene": "Waiting_Scene"
+        },
+        {
+          "name": "Afternoon Talk Show",
+          "time": "14:00",
+          "source": "Talk_Show",
+          "file": "C:\\videos\\talk_show.mp4",
+          "duration": 3600,
+          "loop": false,
+          "scene": "Talk_Show_Scene"
+        }
+      ]
+    },
+    {
+      "name": "Weekend Entertainment",
+      "enabled": true,
+      "days": ["saturday", "sunday"],
+      "items": [
+        {
+          "name": "Weekend Movie",
+          "time": "20:00",
+          "source": "Movie_Source",
+          "file": "C:\\videos\\weekend_movie.mp4",
+          "duration": 7200,
+          "loop": false,
+          "scene": "Movie_Scene"
+        },
+        {
+          "name": "Late Night Music",
+          "time": "23:00",
+          "source": "Music_Source",
+          "file": "C:\\videos\\music_playlist.mp4",
+          "duration": 0,
+          "loop": true,
+          "scene": "Music_Scene"
+        }
+      ]
+    }
+  ]
+}

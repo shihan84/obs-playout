@@ -1,0 +1,198 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: |
+        choco install -y cmake --installargs '"ADD_CMAKE_TO_PATH=System"'
+        choco install -y visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+        choco install -y git
+    
+    - name: Set up Visual Studio environment
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+    
+    - name: Configure CMake
+      run: |
+        cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+    
+    - name: Build
+      run: |
+        cmake --build build --config ${{env.BUILD_TYPE}} --parallel
+    
+    - name: Test
+      run: |
+        cd build
+        ctest --output-on-failure --parallel 4 -C ${{env.BUILD_TYPE}}
+    
+    - name: Upload Windows artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: obs-time-scheduler-windows-x64
+        path: build/obs-plugins/64bit/obs-time-scheduler.dll
+        retention-days: 30
+
+  build-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          build-essential \
+          libobs-dev \
+          libqt6-dev \
+          qt6-base-dev \
+          qt6-tools-dev \
+          libqt6svg6-dev \
+          pkg-config \
+          git
+    
+    - name: Configure CMake
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+    
+    - name: Build
+      run: |
+        cmake --build build --config ${{env.BUILD_TYPE}} --parallel
+    
+    - name: Test
+      run: |
+        cd build
+        ctest --output-on-failure --parallel 4
+    
+    - name: Upload Linux artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: obs-time-scheduler-linux-x64
+        path: build/obs-plugins/64bit/obs-time-scheduler.so
+        retention-days: 30
+
+  build-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: |
+        brew update
+        brew install cmake
+        brew install --cask obs
+    
+    - name: Configure CMake
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+    
+    - name: Build
+      run: |
+        cmake --build build --config ${{env.BUILD_TYPE}} --parallel
+    
+    - name: Test
+      run: |
+        cd build
+        ctest --output-on-failure --parallel 4
+    
+    - name: Upload macOS artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: obs-time-scheduler-macos-universal
+        path: build/obs-plugins/64bit/obs-time-scheduler.so
+        retention-days: 30
+
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install clang-format
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-format
+    
+    - name: Check code formatting
+      run: |
+        find src -name "*.cpp" -o -name "*.h" | xargs clang-format --dry-run --Werror
+    
+    - name: Install cppcheck
+      run: |
+        sudo apt-get install -y cppcheck
+    
+    - name: Run static analysis
+      run: |
+        cppcheck --enable=all --error-exitcode=1 --suppress=missingIncludeSystem src/
+
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  documentation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Generate documentation
+      run: |
+        # This would generate Doxygen documentation if configured
+        echo "Documentation generation placeholder"
+    
+    - name: Check README
+      run: |
+        if [ ! -f README.md ]; then
+          echo "README.md is missing"
+          exit 1
+        fi
+        
+        # Check for required sections
+        if ! grep -q "## Installation" README.md; then
+          echo "README.md missing Installation section"
+          exit 1
+        fi
+        
+        if ! grep -q "## Usage" README.md; then
+          echo "README.md missing Usage section"
+          exit 1
+        fi

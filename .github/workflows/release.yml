@@ -1,0 +1,230 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build-release:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows-x64
+            arch: x64
+            generator: "Visual Studio 17 2022"
+            artifact: obs-time-scheduler.dll
+            package_ext: .zip
+          - os: ubuntu-latest
+            name: linux-x64
+            arch: x64
+            generator: "Unix Makefiles"
+            artifact: obs-time-scheduler.so
+            package_ext: .tar.gz
+          - os: macos-latest
+            name: macos-universal
+            arch: universal
+            generator: "Unix Makefiles"
+            artifact: obs-time-scheduler.so
+            package_ext: .tar.gz
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0
+
+    - name: Get version from tag
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Set up Windows environment
+      if: matrix.os == 'windows-latest'
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: ${{ matrix.arch }}
+
+    - name: Install dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install -y cmake --installargs '"ADD_CMAKE_TO_PATH=System"'
+        choco install -y visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+
+    - name: Install dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          build-essential \
+          libobs-dev \
+          libqt6-dev \
+          qt6-base-dev \
+          qt6-tools-dev \
+          libqt6svg6-dev \
+          pkg-config
+
+    - name: Install dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew update
+        brew install cmake
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -G "${{ matrix.generator }}" \
+          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
+          -DVERSION=${{ steps.version.outputs.VERSION }}
+
+    - name: Build
+      run: |
+        cmake --build build --config ${{env.BUILD_TYPE}} --parallel
+
+    - name: Run tests
+      run: |
+        cd build
+        ctest --output-on-failure --parallel 4 -C ${{env.BUILD_TYPE}}
+
+    - name: Create package (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        mkdir -p package/obs-plugins/64bit
+        mkdir -p package/data/obs-plugins/obs-time-scheduler
+        cp build/obs-plugins/64bit/obs-time-scheduler.dll package/obs-plugins/64bit/
+        cp -r data/* package/data/obs-plugins/obs-time-scheduler/ 2>/dev/null || true
+        cp README.md LICENSE package/ 2>/dev/null || true
+        cd package
+        7z a -tzip ../obs-time-scheduler-${{ steps.version.outputs.VERSION }}-${{ matrix.name }}.zip *
+
+    - name: Create package (Linux/macOS)
+      if: matrix.os != 'windows-latest'
+      run: |
+        mkdir -p package/obs-plugins/64bit
+        mkdir -p package/data/obs-plugins/obs-time-scheduler
+        cp build/obs-plugins/64bit/obs-time-scheduler.so package/obs-plugins/64bit/
+        cp -r data/* package/data/obs-plugins/obs-time-scheduler/ 2>/dev/null || true
+        cp README.md LICENSE package/ 2>/dev/null || true
+        cd package
+        tar -czf ../obs-time-scheduler-${{ steps.version.outputs.VERSION }}-${{ matrix.name }}.tar.gz *
+
+    - name: Upload package
+      uses: actions/upload-artifact@v4
+      with:
+        name: obs-time-scheduler-${{ matrix.name }}
+        path: obs-time-scheduler-${{ steps.version.outputs.VERSION }}-${{ matrix.name }}${{ matrix.package_ext }}
+        retention-days: 30
+
+  create-release:
+    needs: build-release
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get version from tag
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Get previous tag
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        
+        if [ -z "$PREVIOUS_TAG" ]; then
+          CHANGELOG=$(git log --pretty=format:"- %s" HEAD)
+        else
+          CHANGELOG=$(git log --pretty=format:"- %s" $PREVIOUS_TAG..HEAD)
+        fi
+        
+        # Save changelog to file
+        echo "$CHANGELOG" > CHANGELOG_RELEASE.md
+        
+        # Set output for GitHub release
+        {
+          echo 'changelog<<EOF'
+          echo "$CHANGELOG"
+          echo EOF
+        } >> $GITHUB_OUTPUT
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ steps.version.outputs.VERSION }}
+        name: OBS Time Scheduler v${{ steps.version.outputs.VERSION }}
+        body: |
+          ## Changes
+          ${{ steps.changelog.outputs.changelog }}
+          
+          ## Installation
+          
+          ### Windows
+          1. Download `obs-time-scheduler-${{ steps.version.outputs.VERSION }}-windows-x64.zip`
+          2. Extract to your OBS Studio plugins directory
+          3. Restart OBS Studio
+          
+          ### Linux
+          1. Download `obs-time-scheduler-${{ steps.version.outputs.VERSION }}-linux-x64.tar.gz`
+          2. Extract to your OBS Studio plugins directory (usually `~/.config/obs-studio/plugins/`)
+          3. Restart OBS Studio
+          
+          ### macOS
+          1. Download `obs-time-scheduler-${{ steps.version.outputs.VERSION }}-macos-universal.tar.gz`
+          2. Extract to your OBS Studio plugins directory
+          3. Restart OBS Studio
+          
+          ## Documentation
+          See the [README](https://github.com/your-repo/obs-time-scheduler/blob/main/README.md) for detailed usage instructions.
+        files: |
+          artifacts/*/obs-time-scheduler-*
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-homebrew:
+    needs: create-release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        repository: your-repo/homebrew-obs-time-scheduler
+        token: ${{ secrets.HOMEBREW_TOKEN }}
+
+    - name: Get version from tag
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Update Homebrew formula
+      run: |
+        # Update version and URL in formula
+        sed -i "s/version \".*\"/version \"${{ steps.version.outputs.VERSION }}\"/" obs-time-scheduler.rb
+        sed -i "s|url \".*\"|url \"https://github.com/your-repo/obs-time-scheduler/releases/download/v${{ steps.version.outputs.VERSION }}/obs-time-scheduler-${{ steps.version.outputs.VERSION }}-macos-universal.tar.gz\"|" obs-time-scheduler.rb
+        
+        # Update SHA256 (this would need to be calculated)
+        # For now, use a placeholder
+        sed -i "s/sha256 \".*\"/sha256 \"$(curl -L -s https://github.com/your-repo/obs-time-scheduler/releases/download/v${{ steps.version.outputs.VERSION }}/obs-time-scheduler-${{ steps.version.outputs.VERSION }}-macos-universal.tar.gz | shasum -a 256 | awk '{print $1}')\"/" obs-time-scheduler.rb
+
+    - name: Commit and push
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add obs-time-scheduler.rb
+        git commit -m "Update to version ${{ steps.version.outputs.VERSION }}"
+        git push
