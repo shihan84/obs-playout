@@ -39,8 +39,6 @@ set(SOURCES
     src/playlist-manager.cpp
     src/time-trigger.cpp
     src/media-controller.cpp
-    src/ui/settings-dialog.cpp
-    src/ui/schedule-editor.cpp
     src/utils/file-watcher.cpp
     src/utils/logger.cpp
     src/utils/config.cpp
@@ -52,12 +50,29 @@ set(HEADERS
     src/playlist-manager.h
     src/time-trigger.h
     src/media-controller.h
-    src/ui/settings-dialog.h
-    src/ui/schedule-editor.h
     src/utils/file-watcher.h
     src/utils/logger.h
     src/utils/config.h
 )
+
+# UI components (optional)
+option(ENABLE_UI "Build UI components" ON)
+if(ENABLE_UI)
+    list(APPEND SOURCES
+        src/ui/settings-dialog.cpp
+        src/ui/schedule-editor.cpp
+    )
+    list(APPEND HEADERS
+        src/ui/settings-dialog.h
+        src/ui/schedule-editor.h
+    )
+    
+    # Find Qt6 for UI components
+    find_package(Qt6 QUIET COMPONENTS Core Widgets)
+    if(Qt6_FOUND)
+        target_link_libraries(obs-time-scheduler PRIVATE Qt6::Core Qt6::Widgets)
+    endif()
+endif()
 
 # Create plugin library
 add_library(obs-time-scheduler MODULE ${SOURCES} ${HEADERS})
