@@ -1,29 +1,34 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(obs-time-scheduler VERSION 1.0.0)
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/common/bootstrap.cmake" NO_POLICY_SCOPE)
 
-# Plugin options
+project(${_name} VERSION ${_version})
+
 option(ENABLE_FRONTEND_API "Use obs-frontend-api for UI functionality" ON)
 option(ENABLE_QT "Use Qt functionality" ON)
 
+include(compilerconfig)
+include(defaults)
+include(helpers)
+
 # Find required OBS dependencies
 find_package(libobs REQUIRED)
-target_link_libraries(obs-time-scheduler PRIVATE OBS::libobs)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::libobs)
 
 if(ENABLE_FRONTEND_API)
   find_package(obs-frontend-api REQUIRED)
-  target_link_libraries(obs-time-scheduler PRIVATE OBS::obs-frontend-api)
+  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::obs-frontend-api)
 endif()
 
 if(ENABLE_QT)
   find_package(Qt6 COMPONENTS Widgets Core)
-  target_link_libraries(obs-time-scheduler PRIVATE Qt6::Core Qt6::Widgets)
+  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets)
   target_compile_options(
-    obs-time-scheduler
+    ${CMAKE_PROJECT_NAME}
     PRIVATE $<$<C_COMPILER_ID:Clang,AppleClang>:-Wno-quoted-include-in-framework-header -Wno-comma>
   )
   set_target_properties(
-    obs-time-scheduler
+    ${CMAKE_PROJECT_NAME}
     PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON
   )
 endif()
@@ -39,7 +44,7 @@ if(NOT nlohmann_json_FOUND)
         GIT_TAG v3.11.2
     )
     FetchContent_MakeAvailable(nlohmann_json)
-    target_link_libraries(obs-time-scheduler PRIVATE nlohmann_json::nlohmann_json)
+    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
 endif()
 
 find_package(fmt QUIET)
@@ -51,7 +56,7 @@ if(NOT fmt_FOUND)
         GIT_TAG 10.2.1
     )
     FetchContent_MakeAvailable(fmt)
-    target_link_libraries(obs-time-scheduler PRIVATE fmt::fmt)
+    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE fmt::fmt)
 endif()
 
 # Source files
@@ -90,54 +95,60 @@ if(ENABLE_QT)
 endif()
 
 # Create plugin library
-add_library(obs-time-scheduler MODULE ${SOURCES} ${HEADERS})
+add_library(${CMAKE_PROJECT_NAME} MODULE)
+
+# Add source files
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${SOURCES})
+
+# Set plugin properties
+set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
 
 # Include directories
-target_include_directories(obs-time-scheduler PRIVATE
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${libobs_INCLUDE_DIRS}
 )
 
 # Link libraries
-target_link_libraries(obs-time-scheduler PRIVATE
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
     libobs
     nlohmann_json::nlohmann_json
     fmt::fmt
 )
 
 if(ENABLE_FRONTEND_API)
-    target_link_libraries(obs-time-scheduler PRIVATE obs-frontend-api)
+    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE obs-frontend-api)
 endif()
 
 if(ENABLE_QT)
-    target_link_libraries(obs-time-scheduler PRIVATE Qt6::Core Qt6::Widgets)
+    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets)
 endif()
 
 # Platform-specific libraries
 if(WIN32)
-    target_link_libraries(obs-time-scheduler PRIVATE
+    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
         ws2_32
         shlwapi
     )
 elseif(UNIX AND NOT APPLE)
-    target_link_libraries(obs-time-scheduler PRIVATE
+    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
         pthread
     )
 elseif(APPLE)
-    target_link_libraries(obs-time-scheduler PRIVATE
+    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
         "-framework Foundation"
     )
 endif()
 
 # Set plugin properties
-set_target_properties(obs-time-scheduler PROPERTIES
+set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES
     PREFIX ""
-    OUTPUT_NAME "obs-time-scheduler"
+    OUTPUT_NAME ${_name}
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/obs-plugins/64bit/"
 )
 
 # Install targets
-install(TARGETS obs-time-scheduler
+install(TARGETS ${CMAKE_PROJECT_NAME}
     LIBRARY DESTINATION "obs-plugins/64bit/"
 )
 
