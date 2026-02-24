@@ -23,6 +23,16 @@ jobs:
         choco install -y cmake --installargs '"ADD_CMAKE_TO_PATH=System"'
         choco install -y visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
         choco install -y git pkgconfiglite
+        
+    - name: Install OBS dependencies
+      run: |
+        echo "Installing OBS Studio dependencies..."
+        # OBS Studio provides pre-built dependencies
+        $ProgressPreference = "SilentlyContinue"
+        Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/releases/download/31.1.1/OBS-Studio-31.1.1-Full-x86_64.zip" -OutFile "obs-deps.zip"
+        Expand-Archive -Path "obs-deps.zip" -DestinationPath "C:\"
+        Remove-Item "obs-deps.zip" -Force
+        echo "OBS dependencies installed"
     
     - name: Set up Visual Studio environment
       uses: ilammy/msvc-dev-cmd@v1
