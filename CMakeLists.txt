@@ -27,24 +27,13 @@ endfunction()
 
 # Find required OBS dependencies
 find_package(libobs REQUIRED)
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::libobs)
 
 if(ENABLE_FRONTEND_API)
   find_package(obs-frontend-api REQUIRED)
-  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::obs-frontend-api)
 endif()
 
 if(ENABLE_QT)
   find_package(Qt6 COMPONENTS Widgets Core)
-  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets)
-  target_compile_options(
-    ${CMAKE_PROJECT_NAME}
-    PRIVATE $<$<C_COMPILER_ID:Clang,AppleClang>:-Wno-quoted-include-in-framework-header -Wno-comma>
-  )
-  set_target_properties(
-    ${CMAKE_PROJECT_NAME}
-    PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON
-  )
 endif()
 
 # Find additional dependencies
@@ -58,7 +47,6 @@ if(NOT nlohmann_json_FOUND)
         GIT_TAG v3.11.2
     )
     FetchContent_MakeAvailable(nlohmann_json)
-    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
 endif()
 
 find_package(fmt QUIET)
@@ -70,8 +58,10 @@ if(NOT fmt_FOUND)
         GIT_TAG 10.2.1
     )
     FetchContent_MakeAvailable(fmt)
-    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE fmt::fmt)
 endif()
+
+# Create plugin library
+add_library(${CMAKE_PROJECT_NAME} MODULE)
 
 # Source files
 set(SOURCES
@@ -108,9 +98,6 @@ if(ENABLE_QT)
     )
 endif()
 
-# Create plugin library
-add_library(${CMAKE_PROJECT_NAME} MODULE)
-
 # Add source files
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${SOURCES})
 
@@ -135,7 +122,15 @@ if(ENABLE_FRONTEND_API)
 endif()
 
 if(ENABLE_QT)
-    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets)
+  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets)
+  target_compile_options(
+    ${CMAKE_PROJECT_NAME}
+    PRIVATE $<$<C_COMPILER_ID:Clang,AppleClang>:-Wno-quoted-include-in-framework-header -Wno-comma>
+  )
+  set_target_properties(
+    ${CMAKE_PROJECT_NAME}
+    PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON
+  )
 endif()
 
 # Platform-specific libraries
