@@ -25,8 +25,11 @@ struct TimeSlot {
     }
     
     std::string to_string() const {
-        char buffer[8]; // Increased buffer size to prevent overflow
-        snprintf(buffer, sizeof(buffer), "%02d:%02d", hour, minute);
+        char buffer[16]; // Larger buffer for safety
+        // Ensure hour and minute are within valid ranges
+        int safe_hour = (hour >= 0 && hour <= 23) ? hour : 0;
+        int safe_minute = (minute >= 0 && minute <= 59) ? minute : 0;
+        snprintf(buffer, sizeof(buffer), "%02d:%02d", safe_hour, safe_minute);
         return std::string(buffer);
     }
 };
