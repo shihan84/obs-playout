@@ -27,12 +27,11 @@ jobs:
     - name: Install OBS dependencies
       run: |
         echo "Installing OBS Studio dependencies..."
-        # OBS Studio provides pre-built dependencies
-        $ProgressPreference = "SilentlyContinue"
-        Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/releases/download/31.1.1/OBS-Studio-31.1.1-Full-x86_64.zip" -OutFile "obs-deps.zip"
-        Expand-Archive -Path "obs-deps.zip" -DestinationPath "C:\"
-        Remove-Item "obs-deps.zip" -Force
-        echo "OBS dependencies installed"
+        # Install OBS Studio using winget for proper dependencies
+        winget install OBSProject.OBSStudio --silent --accept-package-agreements --accept-source-agreements
+        # Add OBS to PATH for CMake to find
+        echo "C:\Program Files\obs-studio\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "OBS Studio installed"
     
     - name: Set up Visual Studio environment
       uses: ilammy/msvc-dev-cmd@v1
