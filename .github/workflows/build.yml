@@ -27,15 +27,18 @@ jobs:
     - name: Install OBS dependencies
       run: |
         echo "Installing OBS Studio dependencies..."
-        # Install OBS Studio using winget for full installation
-        winget install OBSProject.OBSStudio --silent --accept-package-agreements --accept-source-agreements
+        # Download and extract OBS Studio pre-built dependencies
+        $ProgressPreference = "SilentlyContinue"
+        Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/releases/download/31.1.1/OBS-Studio-31.1.1-Full-x86_64.zip" -OutFile "obs-studio.zip"
+        Expand-Archive -Path "obs-studio.zip" -DestinationPath "C:\obs-studio"
+        Remove-Item "obs-studio.zip" -Force
         # Add OBS to PATH for CMake to find
-        echo "C:\Program Files\obs-studio\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        echo "C:\Program Files\obs-studio\include" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        echo "C:\Program Files\obs-studio\lib" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "C:\obs-studio\bin\64bit" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "C:\obs-studio\include" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "C:\obs-studio\lib\64bit" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         # Set CMAKE_PREFIX_PATH for OBS
-        echo "CMAKE_PREFIX_PATH=C:\Program Files\obs-studio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "OBS Studio installed with development paths"
+        echo "CMAKE_PREFIX_PATH=C:\obs-studio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "OBS Studio dependencies installed"
     
     - name: Set up Visual Studio environment
       uses: ilammy/msvc-dev-cmd@v1
