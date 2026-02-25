@@ -27,18 +27,61 @@ jobs:
     - name: Install OBS dependencies
       run: |
         echo "Installing OBS Studio dependencies..."
-        # Install OBS Studio using winget as fallback
-        try {
-          $ProgressPreference = "SilentlyContinue"
-          Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/releases/download/31.1.1/OBS-Studio-31.1.1-Full-x64.zip" -OutFile "obs-studio.zip"
-          Expand-Archive -Path "obs-studio.zip" -DestinationPath "C:\obs-studio"
-          Remove-Item "obs-studio.zip" -Force
-          echo "Downloaded OBS Studio from GitHub releases"
-        } catch {
-          echo "GitHub download failed, using winget fallback..."
-          winget install OBSProject.OBSStudio --silent --accept-package-agreements --accept-source-agreements
-          echo "Installed OBS Studio via winget"
+        # Always try to download OBS Studio from GitHub releases first
+        $ProgressPreference = "SilentlyContinue"
+        
+        # Try multiple URLs for OBS Studio
+        $urls = @(
+          "https://github.com/obsproject/obs-studio/releases/download/31.1.1/OBS-Studio-31.1.1-Full-x64.zip",
+          "https://cdn.obsproject.com/downloads/OBS-Studio-31.1.1-Full-x64.zip",
+          "https://github.com/obsproject/obs-studio/releases/download/31.1.1/OBS-Studio-31.1.1-Full-x86_64.zip"
+        )
+        
+        $downloaded = $false
+        foreach ($url in $urls) {
+          try {
+            Write-Host "Trying to download from: $url"
+            Invoke-WebRequest -Uri $url -OutFile "obs-studio.zip" -ErrorAction Stop
+            Write-Host "Download successful, extracting..."
+            Expand-Archive -Path "obs-studio.zip" -DestinationPath "C:\obs-studio" -Force
+            Remove-Item "obs-studio.zip" -Force
+            $downloaded = $true
+            Write-Host "Downloaded and extracted OBS Studio from: $url"
+            break
+          } catch {
+            Write-Host "Failed to download from $url: $($_.Exception.Message)"
+            if (Test-Path "obs-studio.zip") {
+              Remove-Item "obs-studio.zip" -Force
+            }
+          }
         }
+        
+        if (-not $downloaded) {
+          Write-Host "All downloads failed, trying winget..."
+          winget install OBSProject.OBSStudio --silent --accept-package-agreements --accept-source-agreements
+          Write-Host "Installed OBS Studio via winget"
+          
+          # For winget, we need to get the source code separately
+          Write-Host "Downloading OBS Studio source code for development files..."
+          Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/archive/refs/tags/31.1.1.zip" -OutFile "obs-studio-source.zip"
+          Expand-Archive -Path "obs-studio-source.zip" -DestinationPath "C:\obs-studio-source" -Force
+          Remove-Item "obs-studio-source.zip" -Force
+          
+          # Copy development files from source to installation
+          if (Test-Path "C:\obs-studio-source\obs-studio-31.1.1\libobs") {
+            Copy-Item -Path "C:\obs-studio-source\obs-studio-31.1.1\libobs" -Destination "C:\obs-studio\libobs" -Recurse -Force
+          }
+          if (Test-Path "C:\obs-studio-source\obs-studio-31.1.1\deps") {
+            Copy-Item -Path "C:\obs-studio-source\obs-studio-31.1.1\deps" -Destination "C:\obs-studio\deps" -Recurse -Force
+          }
+        }
+        
+        # List what we have
+        Write-Host "OBS Studio installation structure:"
+        if (Test-Path "C:\obs-studio") {
+          Get-ChildItem -Path "C:\obs-studio" -Recurse | Select-Object -First 20 | ForEach-Object { Write-Host "  $($_.FullName)" }
+        }
+        
         # Add OBS to PATH for CMake to find (try both locations)
         if (Test-Path "C:\obs-studio\bin\64bit") {
           echo "C:\obs-studio\bin\64bit" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append

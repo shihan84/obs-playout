@@ -49,14 +49,14 @@ if(NOT libobs_FOUND)
   find_path(libobs_INCLUDE_DIR
     NAMES obs/obs-module.h
     PATHS ${OBS_POSSIBLE_PATHS}
-    PATH_SUFFIXES include include/obs include/libobs
+    PATH_SUFFIXES include include/obs include/libobs libobs/include
     DOC "libobs include directory"
   )
   
   find_library(libobs_LIBRARY
     NAMES obs libobs
     PATHS ${OBS_POSSIBLE_PATHS}
-    PATH_SUFFIXES lib lib/64bit bin/64bit obs-studio/lib obs-studio/lib/64bit
+    PATH_SUFFIXES lib lib/64bit bin/64bit obs-studio/lib obs-studio/lib/64bit libobs/64bit
     DOC "libobs library"
   )
   
@@ -74,26 +74,26 @@ if(NOT libobs_FOUND)
     set(libobs_FOUND TRUE)
     message(STATUS "Found libobs: ${libobs_LIBRARY}")
   else()
-    # Try to find OBS in common locations with different structure
-    message(STATUS "Standard search failed, trying alternative paths...")
+    # Try to find OBS in source code structure
+    message(STATUS "Standard search failed, trying source code structure...")
     
-    # Try alternative search for winget installation
+    # Try source code structure
     find_path(libobs_INCLUDE_DIR_ALT
       NAMES obs/obs-module.h
-      PATHS "C:/Program Files/obs-studio"
-      PATH_SUFFIXES "data/obs-plugins/frontend-api" "lib/obs" "include"
+      PATHS "C:/obs-studio" "C:/obs-studio-source/obs-studio-31.1.1"
+      PATH_SUFFIXES "libobs/include" "include" "libobs"
       NO_DEFAULT_PATH
     )
     
     find_library(libobs_LIBRARY_ALT
       NAMES obs libobs
-      PATHS "C:/Program Files/obs-studio"
-      PATH_SUFFIXES "bin/64bit" "lib" "lib/64bit" "obs-studio/bin/64bit"
+      PATHS "C:/obs-studio" "C:/obs-studio-source/obs-studio-31.1.1"
+      PATH_SUFFIXES "libobs/64bit" "lib/64bit" "bin/64bit" "build/64bit/lib"
       NO_DEFAULT_PATH
     )
     
-    message(STATUS "Alternative search - include: ${libobs_INCLUDE_DIR_ALT}")
-    message(STATUS "Alternative search - library: ${libobs_LIBRARY_ALT}")
+    message(STATUS "Source search - include: ${libobs_INCLUDE_DIR_ALT}")
+    message(STATUS "Source search - library: ${libobs_LIBRARY_ALT}")
     
     if(libobs_INCLUDE_DIR_ALT AND libobs_LIBRARY_ALT)
       add_library(OBS::libobs UNKNOWN IMPORTED)
@@ -102,9 +102,23 @@ if(NOT libobs_FOUND)
         INTERFACE_INCLUDE_DIRECTORIES "${libobs_INCLUDE_DIR_ALT}"
       )
       set(libobs_FOUND TRUE)
-      message(STATUS "Found libobs via alternative search: ${libobs_LIBRARY_ALT}")
+      message(STATUS "Found libobs via source search: ${libobs_LIBRARY_ALT}")
     else()
-      message(FATAL_ERROR "libobs not found in any location. Please install OBS Studio development files.")
+      # Last resort: try to build libobs from source
+      message(STATUS "No pre-built libobs found, checking if source is available...")
+      
+      find_path(libobs_SOURCE_DIR
+        NAMES CMakeLists.txt
+        PATHS "C:/obs-studio-source/obs-studio-31.1.1/libobs"
+        NO_DEFAULT_PATH
+      )
+      
+      if(libobs_SOURCE_DIR)
+        message(STATUS "Found libobs source at: ${libobs_SOURCE_DIR}")
+        message(FATAL_ERROR "libobs source found but not built. Please build libobs first or use pre-built binaries.")
+      else()
+        message(FATAL_ERROR "libobs not found in any location. Please install OBS Studio development files.")
+      endif()
     endif()
   endif()
 endif()
