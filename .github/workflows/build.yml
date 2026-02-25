@@ -29,7 +29,7 @@ jobs:
         echo "Installing OBS Studio dependencies..."
         # Download and extract OBS Studio pre-built dependencies
         $ProgressPreference = "SilentlyContinue"
-        Invoke-WebRequest -Uri "https://github.com/obsproject/obs-studio/releases/download/31.1.1/OBS-Studio-31.1.1-Full-x86_64.zip" -OutFile "obs-studio.zip"
+        Invoke-WebRequest -Uri "https://cdn.obsproject.com/downloads/OBS-Studio-31.1.1-Full-x86_64.zip" -OutFile "obs-studio.zip"
         Expand-Archive -Path "obs-studio.zip" -DestinationPath "C:\obs-studio"
         Remove-Item "obs-studio.zip" -Force
         # Add OBS to PATH for CMake to find
