@@ -102,7 +102,8 @@ endif()
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${SOURCES})
 
 # Set plugin properties
-set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
+set_target_properties_plugin(${CMAKE_PROJECT_NAME})
+set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
 
 # Include directories
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
@@ -112,13 +113,13 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Link libraries
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
-    libobs
+    OBS::libobs
     nlohmann_json::nlohmann_json
     fmt::fmt
 )
 
 if(ENABLE_FRONTEND_API)
-    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE obs-frontend-api)
+    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::obs-frontend-api)
 endif()
 
 if(ENABLE_QT)
