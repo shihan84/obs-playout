@@ -26,10 +26,88 @@ function(set_target_properties_plugin target)
 endfunction()
 
 # Find required OBS dependencies
-find_package(libobs REQUIRED)
+# Try to find libobs using package configuration first
+find_package(libobs QUIET)
+
+# If package configuration not found, find manually
+if(NOT libobs_FOUND)
+  message(STATUS "libobs package not found, searching manually...")
+  
+  # Set possible OBS installation paths
+  set(OBS_POSSIBLE_PATHS
+    "C:/obs-studio"
+    "C:/Program Files/obs-studio"
+    "C:/Program Files (x86)/obs-studio"
+    "$ENV{CMAKE_PREFIX_PATH}"
+    "$ENV{OBS_STUDIO_PATH}"
+  )
+  
+  # Find libobs
+  find_path(libobs_INCLUDE_DIR
+    NAMES obs/obs-module.h
+    PATHS ${OBS_POSSIBLE_PATHS}
+    PATH_SUFFIXES include
+    DOC "libobs include directory"
+  )
+  
+  find_library(libobs_LIBRARY
+    NAMES obs
+    PATHS ${OBS_POSSIBLE_PATHS}
+    PATH_SUFFIXES lib lib/64bit bin/64bit
+    DOC "libobs library"
+  )
+  
+  # Create imported target
+  if(libobs_INCLUDE_DIR AND libobs_LIBRARY)
+    add_library(OBS::libobs UNKNOWN IMPORTED)
+    set_target_properties(OBS::libobs PROPERTIES
+      IMPORTED_LOCATION "${libobs_LIBRARY}"
+      INTERFACE_INCLUDE_DIRECTORIES "${libobs_INCLUDE_DIR}"
+    )
+    set(libobs_FOUND TRUE)
+    message(STATUS "Found libobs: ${libobs_LIBRARY}")
+  else()
+    message(FATAL_ERROR "libobs not found. Please install OBS Studio development files.")
+  endif()
+endif()
 
 if(ENABLE_FRONTEND_API)
-  find_package(obs-frontend-api REQUIRED)
+  # Try to find obs-frontend-api using package configuration first
+  find_package(obs-frontend-api QUIET)
+  
+  # If package configuration not found, find manually
+  if(NOT obs-frontend-api_FOUND)
+    message(STATUS "obs-frontend-api package not found, searching manually...")
+    
+    # Find obs-frontend-api
+    find_path(obs-frontend-api_INCLUDE_DIR
+      NAMES obs-frontend-api/obs-frontend-api.h
+      PATHS ${OBS_POSSIBLE_PATHS}
+      PATH_SUFFIXES include
+      DOC "obs-frontend-api include directory"
+    )
+    
+    find_library(obs-frontend-api_LIBRARY
+      NAMES obs-frontend-api
+      PATHS ${OBS_POSSIBLE_PATHS}
+      PATH_SUFFIXES lib lib/64bit bin/64bit
+      DOC "obs-frontend-api library"
+    )
+    
+    # Create imported target
+    if(obs-frontend-api_INCLUDE_DIR AND obs-frontend-api_LIBRARY)
+      add_library(OBS::obs-frontend-api UNKNOWN IMPORTED)
+      set_target_properties(OBS::obs-frontend-api PROPERTIES
+        IMPORTED_LOCATION "${obs-frontend-api_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${obs-frontend-api_INCLUDE_DIR}"
+      )
+      set(obs-frontend-api_FOUND TRUE)
+      message(STATUS "Found obs-frontend-api: ${obs-frontend-api_LIBRARY}")
+    else()
+      message(WARNING "obs-frontend-api not found. Frontend API features will be disabled.")
+      set(ENABLE_FRONTEND_API OFF CACHE BOOL "Enable frontend API" FORCE)
+    endif()
+  endif()
 endif()
 
 if(ENABLE_QT)
