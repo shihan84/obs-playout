@@ -42,20 +42,27 @@ if(NOT libobs_FOUND)
     "$ENV{OBS_STUDIO_PATH}"
   )
   
+  # Debug: Show what paths we're searching
+  message(STATUS "Searching OBS in paths: ${OBS_POSSIBLE_PATHS}")
+  
   # Find libobs
   find_path(libobs_INCLUDE_DIR
     NAMES obs/obs-module.h
     PATHS ${OBS_POSSIBLE_PATHS}
-    PATH_SUFFIXES include
+    PATH_SUFFIXES include include/obs include/libobs
     DOC "libobs include directory"
   )
   
   find_library(libobs_LIBRARY
-    NAMES obs
+    NAMES obs libobs
     PATHS ${OBS_POSSIBLE_PATHS}
-    PATH_SUFFIXES lib lib/64bit bin/64bit
+    PATH_SUFFIXES lib lib/64bit bin/64bit obs-studio/lib obs-studio/lib/64bit
     DOC "libobs library"
   )
+  
+  # Debug: Show what we found
+  message(STATUS "libobs include dir: ${libobs_INCLUDE_DIR}")
+  message(STATUS "libobs library: ${libobs_LIBRARY}")
   
   # Create imported target
   if(libobs_INCLUDE_DIR AND libobs_LIBRARY)
@@ -67,7 +74,38 @@ if(NOT libobs_FOUND)
     set(libobs_FOUND TRUE)
     message(STATUS "Found libobs: ${libobs_LIBRARY}")
   else()
-    message(FATAL_ERROR "libobs not found. Please install OBS Studio development files.")
+    # Try to find OBS in common locations with different structure
+    message(STATUS "Standard search failed, trying alternative paths...")
+    
+    # Try alternative search for winget installation
+    find_path(libobs_INCLUDE_DIR_ALT
+      NAMES obs/obs-module.h
+      PATHS "C:/Program Files/obs-studio"
+      PATH_SUFFIXES "data/obs-plugins/frontend-api" "lib/obs" "include"
+      NO_DEFAULT_PATH
+    )
+    
+    find_library(libobs_LIBRARY_ALT
+      NAMES obs libobs
+      PATHS "C:/Program Files/obs-studio"
+      PATH_SUFFIXES "bin/64bit" "lib" "lib/64bit" "obs-studio/bin/64bit"
+      NO_DEFAULT_PATH
+    )
+    
+    message(STATUS "Alternative search - include: ${libobs_INCLUDE_DIR_ALT}")
+    message(STATUS "Alternative search - library: ${libobs_LIBRARY_ALT}")
+    
+    if(libobs_INCLUDE_DIR_ALT AND libobs_LIBRARY_ALT)
+      add_library(OBS::libobs UNKNOWN IMPORTED)
+      set_target_properties(OBS::libobs PROPERTIES
+        IMPORTED_LOCATION "${libobs_LIBRARY_ALT}"
+        INTERFACE_INCLUDE_DIRECTORIES "${libobs_INCLUDE_DIR_ALT}"
+      )
+      set(libobs_FOUND TRUE)
+      message(STATUS "Found libobs via alternative search: ${libobs_LIBRARY_ALT}")
+    else()
+      message(FATAL_ERROR "libobs not found in any location. Please install OBS Studio development files.")
+    endif()
   endif()
 endif()
 
