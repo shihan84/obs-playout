@@ -5,6 +5,10 @@
 #include <memory>
 #include <map>
 #include <mutex>
+#include <obs-module.h>
+
+struct obs_data_t;
+struct obs_source_t;
 
 struct ScheduledItem {
     std::string id;

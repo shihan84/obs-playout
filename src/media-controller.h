@@ -5,6 +5,10 @@
 #include <mutex>
 #include <vector>
 #include <functional>
+#include <obs-module.h>
+
+struct obs_data_t;
+struct obs_source_t;
 
 struct ScheduledItem;
 

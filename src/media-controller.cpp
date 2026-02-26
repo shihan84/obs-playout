@@ -432,6 +432,9 @@ std::string MediaController::get_media_state(const std::string& source_name) con
     case OBS_MEDIA_STATE_ERROR:     return "error";
     default:                        return "unknown";
     }
+    
+    // This should never be reached due to the default case above
+    return "unknown";
 }
 
 int MediaController::get_media_duration(const std::string& source_name) const {
